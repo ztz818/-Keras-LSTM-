@@ -1,0 +1,68 @@
+目标函数:
+
+keras文档:  http://keras.io/objectives/
+
+mean_squared_error / mse  均方误差，常用的目标函数，公式为((y_pred-y_true)**2).mean()
+mean_absolute_error / mae 绝对值均差，公式为(|y_pred-y_true|).mean()
+mean_absolute_percentage_error / mape公式为：(|(y_true - y_pred) / clip((|y_true|),epsilon, infinite)|).mean(axis=-1) * 100，和mae的区别就是，累加的是（预测值与实际值的差）除以（剔除不介于epsilon和infinite之间的实际值)，然后求均值。
+mean_squared_logarithmic_error / msle公式为： (log(clip(y_pred, epsilon, infinite)+1)- log(clip(y_true, epsilon,infinite)+1.))^2.mean(axis=-1)，这个就是加入了log对数，剔除不介于epsilon和infinite之间的预测值与实际值之后，然后取对数，作差，平方，累加求均值。
+squared_hinge 公式为：(max(1-y_true*y_pred,0))^2.mean(axis=-1)，取1减去预测值与实际值乘积的结果与0比相对大的值的平方的累加均值。
+hinge 公式为：(max(1-y_true*y_pred,0)).mean(axis=-1)，取1减去预测值与实际值乘积的结果与0比相对大的值的的累加均值。
+binary_crossentropy: 常说的逻辑回归, 就是常用的交叉熵函数
+categorical_crossentropy: 多分类的逻辑， 交叉熵函数的一种变形吧，没看太明白
+
+
+SGD
+  这里的随机梯度下降，从严格意义上说应该是Mini-batch梯度下降，即每次用一小批样本进行计算，这样一方面具有梯度下降更新参数时低方差的特性，同时也兼顾了随机梯度下降参数更新的效率。 
+  
+  随机梯度下降不能保证很好的收敛性，如果learning rate选择过大会在极小值点震荡，如果选择过小收敛速度太慢，而且对于非凸函数而言该算法容易陷入局部最优。 
+  SGD在ravines容易被困住，momentum通过加入动量因子，可以加速SGD，并且抑制震荡。 
+  
+  Adagrad
+  这个算法可以对低频的参数做较大的更新，对高频的参数做较小的更新，因此，对于稀疏数据它的表现很好，很好的提高了SGD的鲁棒性，例如Youtube视频里的猫，训练Glove word embedings，因为它们都需要在低频的特征上有更大的更新 
+梯度更新规则： 
+θt+1,i=θt,i−ηGt,ii+ϵ−−−−−−−√⋅gt,i
+
+g是t时刻参数θi的梯度 
+gt,i=∇θJ(θi)
+
+如果是随机梯度下降，那么θi的梯度更新公式为： 
+θt+1,i=θt,i−η⋅gt,i
+
+  需要用户手工调整一个合适的学习率，Adagrad算法可以动态调整学习率，从而避免的手动调整学习率的问题。Gt是个对角矩阵,Gt,ii是从第一步到第i步关于θi的梯度的平方和。ϵ是平滑因子防止出现除0的情况，一般取值1e-8，η默认设定为0.01。该方法的问题在于分母不断积累，学习率不断收缩最终变得非常小。
+2.3Adadelta
+  该算法是对Adagrad算法的改进，和Adagrad相比Adadelta并没有计算所有的历史梯度平方和，而是计算过去w时间窗口梯度衰减平方和的加权平均， 
+θt+1,i=θt,i−ηE[g2]t+ϵ−−−−−−−−√⋅gt,i
+
+其中E[g2]的计算公式如下: 
+E[g2]=γE[g2]t−1+(1−γ)g2t
+
+γ类似于动量因子，通常设置为0.9左右
+2.4 RMSprop
+  rmsprop是Hinton提出来的一种自适应学习率的算法，和Adadelta一样都是为了解决Adagrad梯度急速下降的问题 
+E[g2]=γE[g2]t−1+(1−γ)g2t
+θt+1,i=θt,i−ηE[g2]t+ϵ−−−−−−−−√⋅gt,i
+
+  从公示表达上RMSprop和Adadelta的表达是一致的，但是RMSprop是计算历史所有的梯度衰减平方和，并没有时间窗口的概念（对RMSprop和Adadelta的理解还有疑问）。 
+  Hinton建议将γ设置为0.9，η设置为0.001
+2.4Adam
+  Adam（Adaptive Moment Estimation）也是一种自适应的学习率方法，它除了存储类似于Adadelta和RMSprop算法的历史梯度平方的衰减平均vt外，还存储了历史梯度的衰减平均mt 
+mt=β1mt−1+(1−β1)gt
+vt=β2vt−1+(1−β2)g2t
+
+  但是这样有个问题就是mt和vt在算法初始阶段的时候取向于0特别是β1或β2接近1的时候，通过以下估计的形式地下这个偏差。 
+mˆt=mt1−βt1
+vˆt=vt1−βt2
+
+参数更新的公式为： 
+θt+1=θt−ηvtˆ−−√+ϵmˆt
+
+作者建议参数设置：β1设置为0.9, β2设置为 0.999
+2.5Adamax
+Adamax的参数更新策略 
+ut=β∞2vt−1+(1−β∞2)|gt|∞=max(β2⋅vt−1,|gt|
+θt+1=θt+ηutmˆt
+
+作者建议参数设置：η设置为0.002，β1设置为0.9，β2设置为0.999
+三、优化器选择
+  这么多的优化算法，我们该怎么选择呢？如果你的输入数据稀疏，建议选择自适应学习率的优化方法。在自适应学习算法中Adadelta、RMSprop、Adam表现结果类似，Adam效果略微优于其它两种算法。在神经网络中如果需要更快的收敛，或者训练更深的更复杂的神经网络，也要选择自适应学习率的算法。
